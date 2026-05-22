@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Infrastructure Procurement</title>
+  <!-- Icons: Tabler Icons webfont (requires internet) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-brand">
+      <i class="ti ti-server" aria-hidden="true"></i>
+      <div>
+        <span class="hdr-title">IT Infrastructure Procurement</span>
+        <span class="hdr-sub">AZ Technology &middot; Internal Dashboard</span>
+      </div>
+    </div>
+    <div class="hdr-actions">
+      <div class="upload-wrap">
+        <label class="btn-upload" for="f-spend">
+          <i class="ti ti-table" aria-hidden="true"></i> Spend CSV
+        </label>
+        <input type="file" id="f-spend" accept=".csv,.txt">
+        <span id="lbl-spend" class="file-lbl"></span>
+      </div>
+      <div class="upload-wrap">
+        <label class="btn-upload" for="f-contracts">
+          <i class="ti ti-file-text" aria-hidden="true"></i> Contracts CSV
+        </label>
+        <input type="file" id="f-contracts" accept=".csv,.txt">
+        <span id="lbl-contracts" class="file-lbl"></span>
+      </div>
+      <span id="last-upd" class="last-upd"></span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ── Empty State ─────────────────────────────── -->
+  <section id="empty" class="empty" aria-label="Daten hochladen">
+    <i class="ti ti-cloud-upload empty-ico" aria-hidden="true"></i>
+    <h2 class="empty-title">Noch keine Daten geladen</h2>
+    <p class="empty-desc">
+      Exportiere die Daten aus Power BI als CSV (Underlying Data) und lade sie hier hoch.
+      Das Dashboard filtert automatisch auf IT Infrastructure.
+    </p>
+    <div class="empty-cards">
+      <label class="empty-card" for="f-spend">
+        <i class="ti ti-table" aria-hidden="true"></i>
+        <strong>External Spend Export</strong>
+        <span>Spend Visibility &rarr; Underlying Data</span>
+      </label>
+      <label class="empty-card" for="f-contracts">
+        <i class="ti ti-file-contract" aria-hidden="true"></i>
+        <strong>Contract Compliance Export</strong>
+        <span>Contract Management &rarr; Underlying Data</span>
+      </label>
+    </div>
+  </section>
+
+  <!-- ── Dashboard ───────────────────────────────── -->
+  <div id="dash" class="hidden">
+
+    <div id="kpis" class="kpis" role="region" aria-label="Kennzahlen Übersicht"></div>
+
+    <nav class="tabs" role="tablist" aria-label="Dashboard-Bereiche">
+      <button class="tab active" data-tab="spend" role="tab" aria-selected="true">
+        <i class="ti ti-chart-bar" aria-hidden="true"></i> Spend
+      </button>
+      <button class="tab" data-tab="contracts" role="tab" aria-selected="false">
+        <i class="ti ti-file-text" aria-hidden="true"></i> Contracts
+      </button>
+      <button class="tab" data-tab="expiry" role="tab" aria-selected="false">
+        <i class="ti ti-alarm" aria-hidden="true"></i> Expiry Watch
+        <span id="expiry-badge" class="badge badge-danger hidden" aria-label="Dringende Verträge"></span>
+      </button>
+      <button class="tab" data-tab="referents" role="tab" aria-selected="false">
+        <i class="ti ti-users" aria-hidden="true"></i> By Referent
+      </button>
+      <button class="tab tab-disabled" role="tab" aria-disabled="true" title="In Vorbereitung">
+        <i class="ti ti-piggy-bank" aria-hidden="true"></i> Savings
+        <span class="badge badge-soon">soon</span>
+      </button>
+    </nav>
+
+    <!-- ── Spend Tab ─────────────────────────────── -->
+    <div id="panel-spend" class="panel active" role="tabpanel">
+      <div class="panel-grid">
+        <div class="card">
+          <div class="card-hdr">
+            Top Suppliers
+            <span class="card-hint">Spend 2026 &middot; IT Infrastructure</span>
+          </div>
+          <div class="chart-wrap" style="height:340px;">
+            <canvas id="ch-suppliers" role="img"
+              aria-label="Horizontales Balkendiagramm: Top Lieferanten nach IT Infrastructure Spend 2026">
+              Top Lieferanten nach Spend 2026 IT Infrastructure.
+            </canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">Spend by Country</div>
+          <div class="chart-wrap" style="height:200px;">
+            <canvas id="ch-country" role="img"
+              aria-label="Balkendiagramm: IT Infrastructure Spend nach Land 2026">
+              Spend-Verteilung nach Land 2026.
+            </canvas>
+          </div>
+          <div class="card-hdr" style="margin-top:20px;">
+            All Suppliers
+            <span id="sup-total" class="card-hint"></span>
+          </div>
+          <div id="sup-list" class="sup-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Contracts Tab ─────────────────────────── -->
+    <div id="panel-contracts" class="panel" role="tabpanel">
+      <div class="filter-row">
+        <input type="text" id="c-search"
+          placeholder="Suche: Lieferant, Contract ID&hellip;"
+          oninput="renderContracts()"
+          aria-label="Verträge durchsuchen">
+        <select id="c-status" onchange="renderContracts()" aria-label="Status">
+          <option value="">Alle Status</option>
+          <option>Published</option>
+          <option>Expired</option>
+        </select>
+        <select id="c-compliance" onchange="renderContracts()" aria-label="Compliance">
+          <option value="">Alle Compliance</option>
+          <option value="Compliant">Compliant</option>
+          <option value="Non-Compliant">Non-Compliant</option>
+        </select>
+        <select id="c-hierarchy" onchange="renderContracts()" aria-label="Vertragstyp">
+          <option value="">Alle Typen</option>
+          <option>Stand Alone Agreement</option>
+          <option>Master Agreement</option>
+          <option>Sub Agreement</option>
+        </select>
+        <select id="c-region" onchange="renderContracts()" aria-label="Region"></select>
+        <select id="c-referent" onchange="renderContracts()" aria-label="Referent"></select>
+        <span id="c-count" class="filter-count" aria-live="polite"></span>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl" aria-label="Vertragsübersicht IT Infrastructure">
+          <thead>
+            <tr>
+              <th>Contract ID</th>
+              <th>Lieferant</th>
+              <th>Status</th>
+              <th>Compliance</th>
+              <th>Typ</th>
+              <th>Region</th>
+              <th>Referent</th>
+              <th>Ablauf</th>
+              <th>Term</th>
+              <th>Scope</th>
+              <th style="text-align:right">Wert</th>
+            </tr>
+          </thead>
+          <tbody id="c-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Expiry Watch Tab ───────────────────────── -->
+    <div id="panel-expiry" class="panel" role="tabpanel">
+      <div id="expiry-kpis" class="kpis" style="margin-bottom:16px;"></div>
+      <div class="expiry-grid">
+        <div class="expiry-col">
+          <div class="expiry-col-hdr danger">
+            <i class="ti ti-alert-circle" aria-hidden="true"></i>
+            Abgelaufen &amp; &lt; 30 Tage
+          </div>
+          <div class="expiry-list" id="exp-red-list"></div>
+        </div>
+        <div class="expiry-col">
+          <div class="expiry-col-hdr warning">
+            <i class="ti ti-clock" aria-hidden="true"></i>
+            31 &ndash; 90 Tage
+          </div>
+          <div class="expiry-list" id="exp-orange-list"></div>
+        </div>
+        <div class="expiry-col">
+          <div class="expiry-col-hdr info">
+            <i class="ti ti-calendar" aria-hidden="true"></i>
+            91 &ndash; 180 Tage
+          </div>
+          <div class="expiry-list" id="exp-yellow-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── By Referent Tab ───────────────────────── -->
+    <div id="panel-referents" class="panel" role="tabpanel">
+      <div id="ref-kpis" class="kpis" style="margin-bottom:16px;"></div>
+      <div class="ref-grid" id="ref-grid"></div>
+    </div>
+
+  </div><!-- #dash -->
+</main>
+
+<!-- Chart.js via CDN (requires internet) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
